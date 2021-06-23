@@ -1,0 +1,6 @@
+[submodule "bfobject"]
+	path = bfobject
+	url = https://github.com/bitoverflowr/bfobject.git
+[submodule "bfstreamobject"]
+	path = bfstreamobject
+	url = https://github.com/bitoverflowr/bfstreamobject.git
