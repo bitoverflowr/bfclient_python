@@ -5,9 +5,9 @@ import sys
 
 from threading import Thread
 from threading import Event
-from management import Object
-from RenzvosClient import StreamFlow
-from RenzvosClient import BuiltMethods
+from bitoverflow_client_python import Object
+from bitoverflow_client_python import StreamFlow
+from bitoverflow_client_python import BuiltMethods
 from inspect import getmembers, isfunction
 
 class ct:
