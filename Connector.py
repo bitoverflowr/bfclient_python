@@ -5,7 +5,7 @@ import sys
 
 from threading import Thread
 from threading import Event
-from bitoverflow_client_python import Object
+import bitoverflow_object
 from bitoverflow_client_python import StreamFlow
 from bitoverflow_client_python import BuiltMethods
 from inspect import getmembers, isfunction
