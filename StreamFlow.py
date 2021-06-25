@@ -1,5 +1,5 @@
-from . import bfobject
-from . import bfstreamobject
+from . import bfobject as Object
+from . import bfstreamobject as StreamObject
 
 class SFClient:
   currentconnections = []

@@ -5,7 +5,7 @@ import sys
 
 from threading import Thread
 from threading import Event
-from . import  bfobject
+from . import  bfobject as Object
 from . import StreamFlow
 from . import BuiltMethods
 from inspect import getmembers, isfunction
@@ -19,7 +19,7 @@ class ct:
      self.client = client
      self.current_module = sys.modules[current_module]
      self.sf = StreamFlow.SFClient(conn=self);
-     websocket.enableTrace(False)
+     websocket.enableTrace(True)
      self.ws = websocket.WebSocketApp("ws://localhost:8000",
             on_open=self.on_open,on_message=self.on_message,on_error=self.on_error,on_close=self.on_close)
      
