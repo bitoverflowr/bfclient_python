@@ -9,8 +9,8 @@ class SFClient:
 
   def StreamRequestObject(self,source,destination,command,data, fname):
     obj = Object.Object()
-    data = { "source" : source , "destination" : destination , "command" : command , "data" : data , "responsecommand" : fname}
-    obj.create(source , "ceo" , "streaminit" ,  "stream" , data )
+    data = { "source" : source , "destination" : destination , "command" : command , "data" : data }
+    obj.create(source , "ceo" , "" ,  "st-init" , data )
     return obj
  
   def NewStream(self,obj):
