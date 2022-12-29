@@ -10,24 +10,34 @@ def renzvosAcknowledgeResponse(connection,obj):
 
 
 
+
 def Incoming_Stream_Request(conn,obj):
     print("Recieved Stream Request")
-    for fun in conn.responsefunctions:
+    for fun in conn.callbacks:
         if fun["command"] == obj.command and fun["type"] == "st-init":
           details = {"status" : "success"}
           resp_obj = Object.Object()
           resp_obj.create(conn.client.name , obj.source , obj.command , "st-init-resp" , details)
           conn._send(resp_obj)
-          fun["function"](conn , obj.source , obj.data)
+          fun["callback"](conn , obj.source , obj.data)
+
+
+def Incoming_Stream_init_response(conn,obj):
+    if conn.waiting == True:
+       print("Stream-init Response Recieved")
+       conn.get_result = obj.data
+       conn.waiting = False
+       conn.result_available.set()
+       
 
 
 
 
 def one_time_request_handle(conn,obj):
     print("One Time Request Incoming")
-    for details in conn.responsefunctions:
+    for details in conn.callbacks:
        if details["command"] == obj.command and details["type"] == "ot":
-          response = details["function"](obj)
+          response = details["callback"](obj)
           resp_obj = Object.Object()
           resp_obj.create(conn.client.name , obj.source , obj.command , "ot-resp" , response)
           conn._send(resp_obj)
@@ -51,3 +61,7 @@ def noclient(conn,obj):
        conn.result_available.set()
        
 
+def stream_object(conn,obj):
+   for fun in conn.callbacks:
+        if fun["command"] == obj.command and fun["type"] == "st":
+          fun["callback"](conn , obj.source , obj.data )

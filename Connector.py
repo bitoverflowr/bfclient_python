@@ -18,7 +18,7 @@ class ct:
   switch = True
   connected = False
   current_retry_count = 0
-  responsefunctions = []
+  callbacks = []
   on_ready = None
   debug_deep = False
   client_exist_callback = False
@@ -72,27 +72,41 @@ class ct:
   def __on_message(self,ws, message):
     obj = Object.Object()
     obj.loads(message)
-    if self.log_traffic :  print(self.client.name + ": Incoming Message " + obj.type)
-    if self.log_data :  print(obj.format())
-
+    
+    
 
     if obj.type == "ack-resp":
+        if self.log_traffic :  print(self.client.name + ": Incoming Acknowledgement " + obj.type)
         BuiltMethods.renzvosAcknowledgeResponse(self,obj)
 
-    if obj.type == "no-client":
+    elif obj.type == "no-client":
+        if self.log_traffic :  print(self.client.name + ": Incoming No Client Response " + obj.type)
         BuiltMethods.noclient(self,obj)
     
-    if obj.type == "ot-req":
+    elif obj.type == "ot-req":
+        if self.log_traffic :  print(self.client.name + ": Incoming One-Time Request " + obj.type)
         BuiltMethods.one_time_request_handle(self,obj)
         
-    if obj.type == "ot-resp":  
+    elif obj.type == "ot-resp":  
+        if self.log_traffic :  print(self.client.name + ": Incoming One-Time Response " + obj.type)
         BuiltMethods.one_time_response(self,obj)
 
-    if obj.type == "st-init-req":
+    elif obj.type == "st-init-req":
+      if self.log_traffic :  print(self.client.name + ": Incoming StreamInitiate Request " + obj.type)
       BuiltMethods.Incoming_Stream_Request(self,obj)
     
-    if obj.type == "st-init-resp":
-       
+    elif obj.type == "st-init-resp":
+       if self.log_traffic :  print(self.client.name + ": Incoming One-Time Response " + obj.type)
+       BuiltMethods.Incoming_Stream_init_response(self,obj)
+    
+    elif obj.type == "st":
+      if self.log_traffic :  print(self.client.name + ": Incoming Stream Object " + obj.type)
+      BuiltMethods.stream_object(self,obj)
+    else:
+      if self.log_traffic :  print(self.client.name + ": Incoming Unknown Message " + obj.type)
+
+    if self.log_data :  print(obj.format())
+      
   
     
 
@@ -117,27 +131,28 @@ class ct:
     return self.___request_with_type(destination,command,data,"ot-req")
   
   def respond(self, command ,  function):
-    self.responsefunctions.append( {"command" : command , "type" : "ot" , "function" : function,} )
+    self.callbacks.append( {"command" : command , "type" : "ot" , "callback" : function,} )
   
-  def respond_stream(self, destination : Client.Client , command , data):
+  def respond_stream(self , command , data , destination = None):
     obj = Object.Object()
-    obj.create(self.client.name , destination.name , "response" ,  "stream" , data)
-    print("Responding Stream " + command)
+    if destination == None : destination = "ceo"
+    obj.create(self.client.name , destination , command ,  "st" , data)
     self._send(obj)
     
 
-  def request_stream(self,destination,command,data,on_message):
+  def request_stream(self,destination,command,data, callback  ):
+    self.callbacks.append({"command" : command , "type" : "st" , "callback" : callback })
     response = self.___request_with_type(destination,command,data,"st-init-req")
     return response
   
   def on_stream_start_request(self,command,function):
-    self.responsefunctions.append( {"command" : command , "type" : "st-init" , "function" : function, } )
+    self.callbacks.append( {"command" : command , "type" : "st-init" , "callback" : function, } )
 
   def _send(self,obj : Object.Object):
     #print("Sending data " + data )
+    jsonstring = obj.format()
     if self.log_traffic : print(self.client.name + " : Outgoing " + obj.type )
     if self.log_data :  print(jsonstring)
-    jsonstring = obj.format()
     self.ws.send(jsonstring)
   
   def ___request_with_type(self,destination , command , data , type):
