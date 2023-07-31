@@ -21,17 +21,24 @@ class ct:
   callbacks = []
   on_ready = None
   debug_deep = False
-  client_exist_callback = False
+  
   log_ack = False
-  log_traffic = True
+  log_traffic = False
   log_data = False
   log_status = False
+
+  client_exist_callback = False
+  no_server_found_callback = False
   
-  def __init__(self,client,current_module  ,retry_count = 3 ):
+  def __init__(self,client,current_module  ,retry_count = 3  , log_ack = False , log_traffic = False , log_data = False, log_status=False):
      self.client = client
      self.retry_count = retry_count
      self.current_module = sys.modules[current_module]
-     self.sf = StreamFlow.SFClient(conn=self);
+     self.log_ack = log_ack
+     self.log_data = log_data
+     self.log_status = log_status
+     self.log_traffic = log_traffic
+     self.sf = StreamFlow.SFClient(conn=self)
      websocket.enableTrace(self.debug_deep)
      self.ws = websocket.WebSocketApp("ws://localhost:8000",
             on_open=self.__on_open,
@@ -50,7 +57,13 @@ class ct:
          break
        if self.client_exist_callback:
          if self.log_status : print("Client Exists")
+         self.exit()
          raise RuntimeError("Client already exists - Try Another Name")
+       if self.no_server_found_callback:
+         if self.log_status : print("No Server Found - Retry Finished")
+         self.exit()
+         raise RuntimeError("No Server Found - Retry Finished")
+
            
      
      
@@ -63,7 +76,10 @@ class ct:
       self.ws.run_forever()
       self.ws.close()
       if self.switch : time.sleep(2)
+      if self.log_status : print(" Retry Counter " + str(self.current_retry_count))
       if  self.current_retry_count >  self.retry_count:
+        if self.log_status : print(" Retry Finished ")
+        self.no_server_found_callback = True
         break
       self.current_retry_count = self.current_retry_count + 1
     if self.log_status : print("Connection and Background Thread is closed")
@@ -102,6 +118,10 @@ class ct:
     elif obj.type == "st":
       if self.log_traffic :  print(self.client.name + ": Incoming Stream Object " + obj.type)
       BuiltMethods.stream_object(self,obj)
+    
+    elif obj.type == "st-end":
+      if self.log_traffic :  print(self.client.name + ": Incoming Stream End Object " + obj.type)
+      BuiltMethods.stream_end_object(self,obj)
     else:
       if self.log_traffic :  print(self.client.name + ": Incoming Unknown Message " + obj.type)
 
@@ -138,11 +158,16 @@ class ct:
     if destination == None : destination = "ceo"
     obj.create(self.client.name , destination , command ,  "st" , data)
     self._send(obj)
-    
 
-  def request_stream(self,destination,command,data, callback  ):
-    self.callbacks.append({"command" : command , "type" : "st" , "callback" : callback })
+  def end_respond_stream(self,command,destination) :
+    obj = Object.Object()
+    obj.create(self.client.name, destination , command , "st-end" , {"cause" : "source-request"})
+    self._send(obj)
+
+  def request_stream(self,destination,command,data, callback  , wait=False , onEnd=None ):
+    self.callbacks.append({"command" : command , "type" : "st" , "callback" : callback , "onEnd" : onEnd , "waiting" : wait})
     response = self.___request_with_type(destination,command,data,"st-init-req")
+    self.wait()
     return response
   
   def on_stream_start_request(self,command,function):
@@ -160,15 +185,11 @@ class ct:
     obj.create(self.client.name , destination , command ,  type , data)
     
     self._send(obj)
-    self.waiting = True
-    if self.log_traffic : print(self.client.name +  " : Waiting")
-    self.result_available = Event()
-    self.result_available.wait()
-    res = self.get_result
-    self.waiting = False
-    self.get_result = None
-    if self.log_traffic : print(self.client.name +  " : Wait Finished")
-    return res
+    res = self.wait()
+    if res.type == "no-client":
+      self.exit()
+      raise RuntimeError("Expected Client is not online")
+    return res.data
 
   def ping(self):
     obj = Object.Object()
@@ -177,7 +198,16 @@ class ct:
     result = self.request("ceo","ping","{}")
     return result
 
-
+  def wait(self):
+    if self.log_traffic : print(self.client.name +  " : Waiting")
+    self.waiting = True
+    self.result_available = Event()
+    self.result_available.wait()
+    res = self.get_result
+    self.waiting = False
+    self.get_result = None
+    if self.log_traffic : print(self.client.name +  " : Wait Finished")
+    return res
 
   def exit(self):
      self.switch = False

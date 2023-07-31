@@ -9,7 +9,11 @@ def renzvosAcknowledgeResponse(connection,obj):
       connection.client_exist_callback = True
 
 
-
+def close_waiting(conn , result):
+  if conn.waiting == True:
+       conn.get_result = result
+       conn.waiting = False
+       conn.result_available.set()
 
 def Incoming_Stream_Request(conn,obj):
     print("Recieved Stream Request")
@@ -22,22 +26,17 @@ def Incoming_Stream_Request(conn,obj):
           fun["callback"](conn , obj.source , obj.data)
 
 
-def Incoming_Stream_init_response(conn,obj):
-    if conn.waiting == True:
-       print("Stream-init Response Recieved")
-       conn.get_result = obj.data
-       conn.waiting = False
-       conn.result_available.set()
+def Incoming_Stream_init_response(conn,result):
+    print("Stream-init Response Recieved")
+    close_waiting(conn,result)
        
-
-
 
 
 def one_time_request_handle(conn,obj):
     print("One Time Request Incoming")
     for details in conn.callbacks:
        if details["command"] == obj.command and details["type"] == "ot":
-          response = details["callback"](obj)
+          response = details["callback"](obj, obj.source , obj.data)
           resp_obj = Object.Object()
           resp_obj.create(conn.client.name , obj.source , obj.command , "ot-resp" , response)
           conn._send(resp_obj)
@@ -46,22 +45,27 @@ def one_time_request_handle(conn,obj):
         
 
 def one_time_response(conn, obj):
-   if conn.waiting == True:
-       print("Response Recieved")
-       conn.get_result = obj.data
-       conn.waiting = False
-       conn.result_available.set()
+    print("Response Recieved")
+    close_waiting(conn,obj)
        
 
 def noclient(conn,obj):
-   if conn.waiting == True:
-       print("Expected Client not availible")
-       conn.get_result = {"Error" : "Client not online"}
-       conn.waiting = False
-       conn.result_available.set()
-       
+  print("Expected Client not availible")
+  close_waiting(conn, obj)
+
 
 def stream_object(conn,obj):
    for fun in conn.callbacks:
         if fun["command"] == obj.command and fun["type"] == "st":
           fun["callback"](conn , obj.source , obj.data )
+
+def stream_end_object(conn,obj):
+  print("Got End object")
+  for fun in conn.callbacks:
+      if fun["command"] == obj.command and fun["type"] == "st":
+          if fun["waiting"]:
+              print("It is waiting")
+              close_waiting(conn,obj)
+          fun["onEnd"](conn , obj.source , obj.data )
+
+
